@@ -23,6 +23,7 @@ const KINDS: Record<string, string> = {
 }
 const GLYPH_COLOR: Record<Glyph, string> = { label: 'text', line: 'inactive', arrow: 'claude' }
 const SVG_LIMIT = 131072
+const CACHE_LIMIT = 200
 // The card's border and padding.
 const CARD_CHROME = 4
 
@@ -84,6 +85,7 @@ export const register: Register = (on, options) => {
           // The terminal reads the PNG itself, so no pixel crosses $.
           const dir = `${((await $.env.get('TMPDIR')) ?? '/tmp').replace(/\/$/, '')}/mermaid-render`
           const name = `${dir}/${hash(key)}`
+          let isRasterized = false
           try {
             await $.process.run(['mkdir', '-p', dir])
             await $.fs.write(`${name}.svg`, svg.svg)
@@ -91,10 +93,14 @@ export const register: Register = (on, options) => {
               ['/usr/bin/env', 'rsvg-convert', '--zoom', '2', '--output', `${name}.png`, `${name}.svg`],
               { timeoutMs: 15000 },
             )
-            remember(pngCache, key, ran.exitCode === 0 ? { path: `${name}.png`, width: svg.width, height: svg.height } : undefined)
+            isRasterized = ran.exitCode === 0
           } catch {
-            remember(pngCache, key, undefined)
+            isRasterized = false
           }
+          const evicted = remember(pngCache, key, isRasterized ? { path: `${name}.png`, width: svg.width, height: svg.height } : undefined)
+          // Only the PNG is the cache; the SVG is scratch, and a failed run may leave a half-written PNG.
+          const stale = [`${name}.svg`, ...(isRasterized ? [] : [`${name}.png`]), ...(evicted === undefined ? [] : [evicted.path])]
+          await $.process.run(['rm', '-f', ...stale]).catch(() => undefined)
         }
         png = pngCache.get(key)
       }
@@ -259,9 +265,17 @@ function failure(source: string, reason: string): Failure {
   return { isRendered: false, kind: header(source).kind, reason: reason.trim() || 'renderer/svg.mjs falhou' }
 }
 
-function remember<T>(cache: Map<string, T>, key: string, value: T): void {
-  if (cache.size >= 200) cache.delete(cache.keys().next().value as string)
+/** Stores the value and returns the entry it pushed out, if any. */
+function remember<T>(cache: Map<string, T>, key: string, value: T): T | undefined {
+  let evicted: T | undefined
+  if (cache.size >= CACHE_LIMIT) {
+    const oldest = cache.keys().next().value as string
+    evicted = cache.get(oldest)
+    cache.delete(oldest)
+  }
   cache.set(key, value)
+
+  return evicted
 }
 
 function hash(text: string): string {

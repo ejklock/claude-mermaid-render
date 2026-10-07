@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Find mermaid fences in Markdown with CRLF line endings.
+- `renderer/svg.mjs` answers malformed input with one `invalid input:` line and exit code 1.
+- Image mode removes its intermediate SVG and any failed or evicted PNG.
+
 ## 0.1.0
 
 - Render mermaid fences in Claude's replies as titled cards.
