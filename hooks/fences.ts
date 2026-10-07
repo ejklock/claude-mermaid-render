@@ -11,7 +11,7 @@ const OPENER = /^ {0,3}(`{3,}|~{3,})(.*)$/
  * fence (a reply still streaming) stays prose until it closes.
  */
 export function splitMermaid(markdown: string): Segment[] {
-  const lines = markdown.split('\n')
+  const lines = markdown.split('\n').map(line => (line.endsWith('\r') ? line.slice(0, -1) : line))
   const segments: Segment[] = []
   let prose: string[] = []
   let index = 0

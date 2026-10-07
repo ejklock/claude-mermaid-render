@@ -1,6 +1,6 @@
 {
   "name": "mermaid-render",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Renders the Mermaid diagrams Claude Code writes or reads as elegant cards in the transcript: colored Unicode art in any terminal, real SVG on desktop.",
   "author": {
     "name": "Klock Tecnologia",

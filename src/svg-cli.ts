@@ -10,7 +10,13 @@ process.stdin.on('data', chunk => {
   input += chunk
 })
 process.stdin.on('end', () => {
-  const { source, theme } = JSON.parse(input) as { source: string; theme: string }
+  const request = parseRequest(input)
+  if (request === undefined) {
+    process.stderr.write('invalid input: expected JSON on stdin with a string "source"\n')
+    process.exitCode = 1
+    return
+  }
+  const { source, theme } = request
   const palette = (THEMES[theme] ?? THEMES['tokyo-night']) as Palette
   try {
     process.stdout.write(flatten(renderMermaidSVG(source, { ...palette, padding: 24 }), palette))
@@ -19,6 +25,17 @@ process.stdin.on('end', () => {
     process.exitCode = 1
   }
 })
+
+function parseRequest(text: string): { source: string; theme: string } | undefined {
+  try {
+    const value: unknown = JSON.parse(text)
+    const { source, theme } = (value ?? {}) as { source?: unknown; theme?: unknown }
+
+    return typeof source === 'string' ? { source, theme: String(theme) } : undefined
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Resolves the CSS custom properties and color-mix() the engine draws with
