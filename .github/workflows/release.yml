@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tag matches the plugin version
+        run: |
+          version=$(node -p "require('./.claude-plugin/plugin.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match plugin.json version $version"; exit 1
+          fi
+
+      - run: npm run check:bundle
+
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code
+
+      - run: claude plugin validate .
+      - run: claude plugin test .
+
+      - name: Package the plugin
+        run: |
+          zip -r "mermaid-render-$GITHUB_REF_NAME.zip" \
+            .claude-plugin/plugin.json .claude-plugin/marketplace.json \
+            hooks renderer LICENSE THIRD_PARTY_NOTICES.md README.md
+
+      - name: Release notes from the changelog
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="## $version" '$0==v{on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ## Install
+
+          ```
+          /plugin install mermaid-render --marketplace ejklock/claude-mermaid-render
+          ```
+          EOF
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "mermaid-render-$GITHUB_REF_NAME.zip" --title "mermaid-render $GITHUB_REF_NAME" --notes-file notes.md

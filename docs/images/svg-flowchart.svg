@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 722.102 203.611" width="722.102" height="203.611" style="--bg:#1a1b26;--fg:#a9b1d6;--line:#3d59a1;--accent:#7aa2f7;--muted:#565f89;background:#1a1b26">
+<rect width="100%" height="100%" fill="#1a1b26" />
+<style>
+  
+  text { font-family: 'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="#7aa2f7" stroke="#7aa2f7" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="#7aa2f7" stroke="#7aa2f7" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="A" data-to="B" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="119.30199999999999,101.8055 167.302,101.8055" fill="none" stroke="#3d59a1" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="B" data-to="C" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="sim" points="296.9778333333333,75.87033333333332 382.0369999999999,75.87033333333332 382.0369999999999,69.35549999999999 456.75699999999995,69.35549999999999" fill="none" stroke="#3d59a1" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="B" data-to="D" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="não" points="296.97783333333336,127.74066666666666 358.913,127.74066666666666 358.913,134.25549999999998 456.75699999999995,134.25549999999998" fill="none" stroke="#3d59a1" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="C" data-to="E" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="558.728,69.35549999999999 598.289,69.35549999999999 598.289,101.8055 617.102,101.8055" fill="none" stroke="#3d59a1" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="D" data-to="E" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="579.476,134.25549999999998 598.289,134.25549999999998 598.289,101.8055 617.102,101.8055" fill="none" stroke="#3d59a1" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="B" data-to="C" data-label="sim">
+  <rect x="390.0369999999999" y="53.3555" width="33.093999999999994" height="30.3" rx="2" ry="2" fill="#1a1b26" stroke="#2b2d3b" stroke-width="1" />
+  <text x="406.58399999999995" y="68.5055" text-anchor="middle" font-size="11" font-weight="400" fill="#565f89" dy="3.8499999999999996">sim</text>
+</g>
+<g class="edge-label" data-from="B" data-to="D" data-label="não">
+  <rect x="366.913" y="118.25549999999998" width="35.47" height="30.3" rx="2" ry="2" fill="#1a1b26" stroke="#2b2d3b" stroke-width="1" />
+  <text x="384.648" y="133.4055" text-anchor="middle" font-size="11" font-weight="400" fill="#565f89" dy="3.8499999999999996">não</text>
+</g>
+<g class="node" data-id="A" data-label="Carrinho" data-shape="rectangle">
+  <rect x="24" y="83.35549999999999" width="95.30199999999999" height="36.900000000000006" rx="0" ry="0" fill="#1e1f2b" stroke="#373949" stroke-width="0.75" />
+  <text x="71.651" y="101.8055" text-anchor="middle" font-size="13" font-weight="500" fill="#a9b1d6" dy="4.55">Carrinho</text>
+</g>
+<g class="node" data-id="B" data-label="Pagamento ok?" data-shape="diamond">
+  <polygon points="245.1075,24 322.913,101.8055 245.1075,179.611 167.302,101.8055" fill="#1e1f2b" stroke="#373949" stroke-width="0.75" />
+  <text x="245.1075" y="101.8055" text-anchor="middle" font-size="13" font-weight="500" fill="#a9b1d6" dy="4.55">Pagamento ok?</text>
+</g>
+<g class="node" data-id="C" data-label="Emitir nota" data-shape="rectangle">
+  <rect x="456.75699999999995" y="50.90549999999999" width="101.971" height="36.900000000000006" rx="0" ry="0" fill="#1e1f2b" stroke="#373949" stroke-width="0.75" />
+  <text x="507.74249999999995" y="69.35549999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#a9b1d6" dy="4.55">Emitir nota</text>
+</g>
+<g class="node" data-id="D" data-label="Avisar cliente" data-shape="rectangle">
+  <rect x="456.75699999999995" y="115.8055" width="122.71900000000001" height="36.900000000000006" rx="0" ry="0" fill="#1e1f2b" stroke="#373949" stroke-width="0.75" />
+  <text x="518.1165" y="134.25549999999998" text-anchor="middle" font-size="13" font-weight="500" fill="#a9b1d6" dy="4.55">Avisar cliente</text>
+</g>
+<g class="node" data-id="E" data-label="Fim" data-shape="circle">
+  <circle cx="657.602" cy="101.8055" r="40.5" fill="#1e1f2b" stroke="#373949" stroke-width="0.75" />
+  <text x="657.602" y="101.8055" text-anchor="middle" font-size="13" font-weight="500" fill="#a9b1d6" dy="4.55">Fim</text>
+</g>
+</svg>

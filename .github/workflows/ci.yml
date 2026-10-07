@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Committed bundles match the sources
+        run: npm run check:bundle
+
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code
+
+      - name: Validate the plugin and its marketplace
+        run: claude plugin validate .
+
+      - name: Test the plugin
+        run: claude plugin test .
+
+      - name: SVG renderer answers and flattens colors
+        run: |
+          svg=$(printf '%s' '{"source":"flowchart LR\n  A --> B","theme":"tokyo-night"}' | node renderer/svg.mjs)
+          case "$svg" in "<svg"*) ;; *) echo "no svg"; exit 1 ;; esac
+          if printf '%s' "$svg" | grep -q 'var(--'; then echo "unflattened CSS variable"; exit 1; fi

@@ -1,0 +1,23 @@
+{
+  "name": "claude-mermaid-render",
+  "version": "0.1.0",
+  "description": "Renders the Mermaid diagrams Claude Code writes or reads as elegant cards in the transcript: colored Unicode art in any terminal, real SVG on desktop.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:bundle": "node scripts/build.mjs && git diff --exit-code -- hooks/vendor/mermaid.js renderer/svg.mjs",
+    "screenshots": "node scripts/screenshots.mjs",
+    "validate": "claude plugin validate .",
+    "test": "claude plugin test ."
+  },
+  "devDependencies": {
+    "beautiful-mermaid": "1.1.3",
+    "esbuild": "0.24.2",
+    "typescript": "^5.9.3"
+  }
+}

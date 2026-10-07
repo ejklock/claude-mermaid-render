@@ -1,0 +1,8 @@
+sequenceDiagram
+  participant C as Cliente
+  participant L as Loja
+  participant P as Pagamento
+  C->>L: Finaliza pedido
+  L->>P: Autoriza cartão
+  P-->>L: Aprovado
+  L-->>C: Pedido confirmado

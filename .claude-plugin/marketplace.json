@@ -1,0 +1,24 @@
+{
+  "name": "mermaid-render",
+  "owner": {
+    "name": "Klock Tecnologia",
+    "email": "neto.nemesis@gmail.com"
+  },
+  "metadata": {
+    "description": "Elegant Mermaid diagram rendering inside Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "mermaid-render",
+      "source": "./",
+      "description": "Renders the Mermaid diagrams Claude Code writes or reads as elegant cards in the transcript: colored Unicode art in any terminal, real SVG on desktop.",
+      "category": "productivity",
+      "tags": [
+        "mermaid",
+        "diagrams",
+        "terminal",
+        "svg"
+      ]
+    }
+  ]
+}

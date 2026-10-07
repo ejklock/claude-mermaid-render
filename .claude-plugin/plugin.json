@@ -1,0 +1,55 @@
+{
+  "name": "mermaid-render",
+  "version": "0.1.0",
+  "description": "Renders the Mermaid diagrams Claude Code writes or reads as elegant cards in the transcript: colored Unicode art in any terminal, real SVG on desktop.",
+  "author": {
+    "name": "Klock Tecnologia",
+    "email": "neto.nemesis@gmail.com",
+    "url": "https://github.com/ejklock"
+  },
+  "homepage": "https://github.com/ejklock/claude-mermaid-render",
+  "repository": "https://github.com/ejklock/claude-mermaid-render",
+  "license": "MIT",
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "flowchart",
+    "sequence-diagram",
+    "terminal",
+    "svg",
+    "visualization",
+    "markdown"
+  ],
+  "userConfig": {
+    "terminalRender": {
+      "type": "string",
+      "title": "Terminal render",
+      "description": "unicode: colored box-drawing card, any terminal. image: the real SVG as a picture (kitty graphics: Ghostty, kitty, WezTerm; needs rsvg-convert).",
+      "default": "unicode",
+      "options": [
+        "unicode",
+        "image"
+      ]
+    },
+    "theme": {
+      "type": "string",
+      "title": "SVG theme",
+      "description": "Colors of the SVG drawn on desktop and in image mode.",
+      "default": "tokyo-night",
+      "options": [
+        "tokyo-night",
+        "tokyo-night-storm",
+        "catppuccin-mocha",
+        "dracula",
+        "nord",
+        "one-dark",
+        "github-dark",
+        "zinc-dark",
+        "solarized-dark",
+        "github-light",
+        "catppuccin-latte",
+        "zinc-light"
+      ]
+    }
+  }
+}
