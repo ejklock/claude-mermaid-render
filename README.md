@@ -6,7 +6,8 @@
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757)](https://docs.claude.com/en/docs/claude-code/plugins)
 
 **mermaid-render** is a Claude Code plugin that turns every Mermaid diagram
-Claude **writes** in a reply, or **reads** and **writes** in a file, into a
+Claude **writes** in a reply, **reads**, **writes**, **edits** or **prints** in
+a file or a command's output, into a
 rendered diagram right in the transcript: a colored Unicode card in any
 terminal, a real SVG in the Claude Code desktop app and VS Code.
 
@@ -44,6 +45,8 @@ mode). `rsvg-convert` only for the `image` mode
 | --- | --- | --- |
 | Claude's replies | A closed ```mermaid fence in the answer | Prose stays Markdown; each diagram becomes a titled card |
 | Tool rows | `Read` or `Write` of a `.mmd` / `.mermaid` file, or a `.md` file with mermaid fences | The diagrams appear under the tool row |
+| Tool rows | A finished `Bash` run whose output holds a closed mermaid fence, or that prints a whole `.mmd` / `.mermaid` file (`cat`, `sed -n`) | The command's own row and output stay; each diagram appears as a card under it |
+| Tool rows | A finished `Edit` of a `.md` file, for each mermaid fence the edit touched; of a `.mmd` / `.mermaid` file, the whole updated diagram | The edit's own diff stays; the updated diagrams appear as cards under it |
 | Any terminal | Default `unicode` mode | Box-drawing art: bold labels, soft lines, accent-colored arrows |
 | Ghostty, kitty, WezTerm | `image` mode | The real SVG, drawn as a picture (kitty graphics protocol) |
 | Desktop app, VS Code | Always | Native SVG |

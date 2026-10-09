@@ -2,7 +2,7 @@ import type { ElementTable, Register, RenderElement, RenderSurface } from 'claud
 
 import { header, renderUnicode } from './diagram'
 import type { Failure, Glyph, Unicode } from './diagram'
-import { diagramsInFile, splitMermaid } from './fences'
+import { applyEdit, diagramsInFile, diagramsInOutput, diagramsTouched, isDiagramFile, splitMermaid } from './fences'
 import type { Segment } from './fences'
 
 type Svg = { isRendered: true; svg: string; width: number; height: number }
@@ -38,7 +38,13 @@ export const register: Register = (on, options) => {
   // A run of reads folds into one count line; unfold the finished ones that
   // read or wrote a diagram, so each row below can draw it.
   on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
-    const hasDiagram = e.props.calls.some(call => fileDiagrams(call.tool, call.output) !== undefined)
+    const hasDiagram = e.props.calls.some(call => {
+      if (fileDiagrams(call.tool, call.output) !== undefined) return true
+      if (call.isRunning || call.isErrored || call.isInterrupted) return false
+      if (call.tool === 'Bash') return bashDiagrams(call.input, call.output).length > 0
+
+      return call.tool === 'Edit' && editDiagrams(call.output).length > 0
+    })
 
     return !e.props.isActive && !e.props.isExpanded && hasDiagram
       ? next({ ...e, props: { ...e.props, isExpanded: true } })
@@ -49,13 +55,20 @@ export const register: Register = (on, options) => {
     let segments: Segment[] = []
     let file: FileDiagrams | undefined
     let indent = 0
+    // Sources of a Bash or Edit row, drawn under the engine's own row.
+    let kept: string[] = []
     if (e.component === 'AssistantMessage' && e.props.isSummary !== true) {
       segments = splitMermaid(e.props.text)
       indent = 2
     } else if (e.component === 'ToolUse' && !e.props.isRunning && !e.props.isErrored) {
+      const isInterrupted = e.props.isInterrupted === true
       file = fileDiagrams(e.props.tool, e.props.output)
       segments = (file?.sources ?? []).map(source => ({ kind: 'mermaid', source }))
       indent = 7
+      if (file === undefined && !isInterrupted) {
+        kept = e.props.tool === 'Bash' ? bashDiagrams(e.props.input, e.props.output) : e.props.tool === 'Edit' ? editDiagrams(e.props.output) : []
+        segments = kept.map(source => ({ kind: 'mermaid', source }))
+      }
     }
     const sources = segments.flatMap(segment => (segment.kind === 'mermaid' ? [segment.source] : []))
     if (sources.length === 0) return next(e)
@@ -110,6 +123,7 @@ export const register: Register = (on, options) => {
     const ui = $.ui.resolve(e)
     const draw: Draw = { ui, surface: e.surface, width: (e.viewport?.columns ?? 100) - indent - CARD_CHROME, prepared }
     if (e.component === 'ToolUse' && file !== undefined) return toolRow(draw, e.props.tool, file)
+    if (kept.length > 0) return underEngineRow(draw, await next(e), kept)
 
     return reply(draw, segments, e.component === 'AssistantMessage' && e.props.isFirstOfReply)
   })
@@ -127,6 +141,19 @@ function reply(draw: Draw, segments: Segment[], isFirstOfReply: boolean): Render
         {segments.map((segment, index) =>
           segment.kind === 'markdown' ? <Markdown key={`md-${index}`} text={segment.text} /> : card(draw, segment.source, index),
         )}
+      </Box>
+    </Box>
+  )
+}
+
+function underEngineRow(draw: Draw, engineRow: RenderElement, sources: string[]): RenderElement {
+  const { Box } = draw.ui
+
+  return (
+    <Box flexDirection="column">
+      {engineRow}
+      <Box flexDirection="column" marginLeft={5} marginTop={1} gap={1}>
+        {sources.map((source, index) => card(draw, source, index))}
       </Box>
     </Box>
   )
@@ -151,6 +178,33 @@ function toolRow(draw: Draw, tool: string, file: FileDiagrams): RenderElement {
       </Box>
     </Box>
   )
+}
+
+/** The diagrams a finished, clean foreground Bash run printed. */
+function bashDiagrams(input: unknown, output: unknown): string[] {
+  const command = (input as { command?: unknown } | undefined)?.command
+  const result = output as { stdout?: unknown; interrupted?: unknown; isImage?: unknown; backgroundTaskId?: unknown } | undefined
+  const stdout = result?.stdout
+  const isClean = result?.interrupted !== true && result?.isImage !== true && result?.backgroundTaskId === undefined
+  if (typeof command !== 'string' || typeof stdout !== 'string' || !isClean) return []
+
+  return diagramsInOutput(command, stdout)
+}
+
+/** The diagrams a finished Edit left in its file: the whole of a .mmd, else the fences the edit touched. */
+function editDiagrams(output: unknown): string[] {
+  const result = output as
+    | { filePath?: unknown; oldString?: unknown; newString?: unknown; originalFile?: unknown; replaceAll?: unknown }
+    | undefined
+  const { filePath, oldString, newString, originalFile } = result ?? {}
+  if (typeof filePath !== 'string' || typeof oldString !== 'string' || typeof newString !== 'string') return []
+  const original = originalFile === null ? null : typeof originalFile === 'string' ? originalFile : undefined
+  if (original === undefined) return []
+
+  const edited = applyEdit(original, oldString, newString, result?.replaceAll === true)
+  if (isDiagramFile(filePath)) return edited.content.trim() === '' ? [] : [edited.content]
+
+  return diagramsTouched(edited.content, edited.spans)
 }
 
 /** The diagrams a finished Read or Write handled, with the file they came from. */
