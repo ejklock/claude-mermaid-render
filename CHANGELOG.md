@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Render diagrams from `Bash` output (mermaid fences, or a printed `.mmd` / `.mermaid` file) as cards under the command's own row.
+- Render diagrams from `Edit`: the fences an edit touched in a Markdown file, or the whole updated `.mmd` / `.mermaid` file, as cards under the edit's own diff.
+- A finished, collapsed group of tool calls unfolds when it holds a diagram `Edit`.
+- Count the line break of a CRLF closer line as part of its fence, so an edit of only that break still draws the fence.
+
 ## 0.1.1
 
 - Find mermaid fences in Markdown with CRLF line endings.
