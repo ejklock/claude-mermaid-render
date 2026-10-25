@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - Image mode draws the picture at the card's full width, shrunk only when it would be taller than the terminal allows.
 - Add the `language` option: card titles, tool row counts and notices are English by default and Brazilian Portuguese with `pt-BR`.
