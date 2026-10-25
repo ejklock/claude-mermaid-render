@@ -4,23 +4,16 @@ import { header, renderUnicode } from './diagram'
 import type { Failure, Glyph, Unicode } from './diagram'
 import { applyEdit, diagramsInFile, diagramsInOutput, diagramsTouched, isDiagramFile, splitMermaid } from './fences'
 import type { Segment } from './fences'
+import { countLine, messagesFor } from './messages'
+import type { Messages } from './messages'
 
 type Svg = { isRendered: true; svg: string; width: number; height: number }
 type Png = { path: string; width: number; height: number }
 /** What the hook fetched through $ for one source, before anything is drawn. */
 type Prepared = { svg?: Svg | Failure; png?: Png }
-type Draw = { ui: ElementTable; surface: RenderSurface; width: number; prepared: Map<string, Prepared> }
+type Draw = { ui: ElementTable; surface: RenderSurface; width: number; rows: number; prepared: Map<string, Prepared>; messages: Messages }
 type FileDiagrams = { path: string; lines: number; sources: string[] }
 
-const KINDS: Record<string, string> = {
-  flowchart: 'Fluxograma',
-  graph: 'Fluxograma',
-  sequenceDiagram: 'Sequência',
-  stateDiagram: 'Estados',
-  'stateDiagram-v2': 'Estados',
-  classDiagram: 'Classes',
-  erDiagram: 'Entidade-relacionamento',
-}
 const GLYPH_COLOR: Record<Glyph, string> = { label: 'text', line: 'inactive', arrow: 'claude' }
 const SVG_LIMIT = 131072
 const CACHE_LIMIT = 200
@@ -34,6 +27,7 @@ const pngCache = new Map<string, Png | undefined>()
 export const register: Register = (on, options) => {
   const terminalRender = String(options.terminalRender ?? 'unicode')
   const theme = String(options.theme ?? 'tokyo-night')
+  const messages = messagesFor(options.language)
 
   // A run of reads folds into one count line; unfold the finished ones that
   // read or wrote a diagram, so each row below can draw it.
@@ -121,7 +115,14 @@ export const register: Register = (on, options) => {
     }
 
     const ui = $.ui.resolve(e)
-    const draw: Draw = { ui, surface: e.surface, width: (e.viewport?.columns ?? 100) - indent - CARD_CHROME, prepared }
+    const draw: Draw = {
+      ui,
+      surface: e.surface,
+      width: (e.viewport?.columns ?? 100) - indent - CARD_CHROME,
+      rows: e.viewport?.rows ?? 40,
+      prepared,
+      messages,
+    }
     if (e.component === 'ToolUse' && file !== undefined) return toolRow(draw, e.props.tool, file)
     if (kept.length > 0) return underEngineRow(draw, await next(e), kept)
 
@@ -161,7 +162,6 @@ function underEngineRow(draw: Draw, engineRow: RenderElement, sources: string[])
 
 function toolRow(draw: Draw, tool: string, file: FileDiagrams): RenderElement {
   const { Box, Text } = draw.ui
-  const count = file.sources.length
 
   return (
     <Box flexDirection="column">
@@ -170,9 +170,7 @@ function toolRow(draw: Draw, tool: string, file: FileDiagrams): RenderElement {
         <Text bold>{tool}</Text>
         <Text>({file.path})</Text>
       </Text>
-      <Text dimColor>
-        {`  ⎿  ${file.lines} linhas · ${count} ${count === 1 ? 'diagrama' : 'diagramas'} Mermaid`}
-      </Text>
+      <Text dimColor>{countLine(draw.messages, file.lines, file.sources.length)}</Text>
       <Box flexDirection="column" marginLeft={5} marginTop={1} gap={1}>
         {file.sources.map((source, index) => card(draw, source, index))}
       </Box>
@@ -241,14 +239,14 @@ function card(draw: Draw, source: string, index: number): RenderElement {
       <Box flexDirection="row" justifyContent="space-between">
         <Text>
           <Text color={isFailed ? 'warning' : 'claude'}>{isFailed ? '▲ ' : '◆ '}</Text>
-          <Text bold>{KINDS[kind] ?? kind}</Text>
+          <Text bold>{draw.messages.kinds[kind] ?? kind}</Text>
           {direction !== undefined && <Text dimColor>{` · ${direction}`}</Text>}
         </Text>
         <Text dimColor>mermaid</Text>
       </Box>
       {'reason' in body ? (
         <Box flexDirection="column" marginTop={1}>
-          <Text color="warning">Não foi possível desenhar: {body.reason}</Text>
+          <Text color="warning">{draw.messages.couldNotDraw(body.reason)}</Text>
           <Code source={source} language="mermaid" />
         </Box>
       ) : (
@@ -264,7 +262,7 @@ function card(draw: Draw, source: string, index: number): RenderElement {
 function cardBody(draw: Draw, source: string, width: number): { element: RenderElement } | { reason: string } {
   const { ui } = draw
   const { svg, png } = draw.prepared.get(source) ?? {}
-  const alt = `diagrama ${header(source).kind}`
+  const alt = draw.messages.alt(header(source).kind)
 
   if (draw.surface !== 'terminal' && svg?.isRendered && svg.svg.length <= SVG_LIMIT && 'Svg' in ui) {
     const { Svg } = ui
@@ -273,9 +271,7 @@ function cardBody(draw: Draw, source: string, width: number): { element: RenderE
 
   if (draw.surface === 'terminal' && png !== undefined && 'Image' in ui) {
     const { Image } = ui
-    // A cell is about twice as tall as it is wide.
-    const columns = Math.min(255, width, Math.max(16, Math.ceil(png.width / 8)))
-    const rows = Math.min(255, Math.max(3, Math.round((columns * png.height) / png.width / 2)))
+    const { columns, rows } = fitImage(png, width, draw.rows)
     return { element: <Image source={{ file: png.path, format: 'png' }} columns={columns} rows={rows} alt={alt} /> }
   }
 
@@ -286,10 +282,20 @@ function cardBody(draw: Draw, source: string, width: number): { element: RenderE
   }
   if (!art.isRendered) return { reason: art.reason }
 
-  return { element: unicodeArt(ui, art, width) }
+  return { element: unicodeArt(ui, art, width, draw.messages) }
 }
 
-function unicodeArt(ui: ElementTable, art: Unicode, width: number): RenderElement {
+/** Fills the card width, shrinking to the terminal height; a cell is about twice as tall as it is wide. */
+function fitImage(png: { width: number; height: number }, width: number, viewportRows: number): { columns: number; rows: number } {
+  const cap = Math.min(255, Math.max(3, viewportRows - 8))
+  const columns = Math.min(255, width)
+  const rows = Math.max(1, Math.round((columns * png.height) / png.width / 2))
+  if (rows <= cap) return { columns, rows }
+
+  return { columns: Math.min(columns, Math.max(1, Math.round((cap * 2 * png.width) / png.height))), rows: cap }
+}
+
+function unicodeArt(ui: ElementTable, art: Unicode, width: number, messages: Messages): RenderElement {
   const { Box, Text } = ui
 
   return (
@@ -303,8 +309,8 @@ function unicodeArt(ui: ElementTable, art: Unicode, width: number): RenderElemen
           ))}
         </Text>
       ))}
-      {art.isTurned && <Text dimColor>{'\n↕ disposto na vertical para caber na largura do terminal'}</Text>}
-      {art.width > width && <Text dimColor>{`\n↔ o diagrama tem ${art.width} colunas; alargue o terminal para vê-lo inteiro`}</Text>}
+      {art.isTurned && <Text dimColor>{`\n${messages.turned}`}</Text>}
+      {art.width > width && <Text dimColor>{`\n${messages.tooWide(art.width)}`}</Text>}
     </Box>
   )
 }
@@ -316,7 +322,7 @@ function parseSvg(svg: string): Svg {
 }
 
 function failure(source: string, reason: string): Failure {
-  return { isRendered: false, kind: header(source).kind, reason: reason.trim() || 'renderer/svg.mjs falhou' }
+  return { isRendered: false, kind: header(source).kind, reason: reason.trim() }
 }
 
 /** Stores the value and returns the entry it pushed out, if any. */

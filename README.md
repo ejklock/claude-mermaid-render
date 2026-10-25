@@ -55,6 +55,7 @@ Details that keep it pleasant:
 
 - A fence that is still streaming stays text until it closes.
 - A horizontal flowchart that does not fit the terminal is laid out vertically.
+- In `image` mode the picture fills the card width and is shrunk to fit the terminal height.
 - A diagram that does not parse shows the reason and its source, never a blank.
 - Mermaid fences shown inside another fence (documentation) are left alone.
 
@@ -75,6 +76,7 @@ Open `/plugin`, select **mermaid-render**, then **Configure**:
 | --- | --- | --- |
 | `terminalRender` | `unicode` (any terminal), `image` (kitty graphics terminals) | `unicode` |
 | `theme` | `tokyo-night`, `tokyo-night-storm`, `catppuccin-mocha`, `dracula`, `nord`, `one-dark`, `github-dark`, `zinc-dark`, `solarized-dark`, `github-light`, `catppuccin-latte`, `zinc-light` | `tokyo-night` |
+| `language` | `en`, `pt-BR` (card titles, tool row counts and notices; any other value gives English) | `en` |
 
 Inside tmux or another multiplexer that does not pass graphics through, keep
 `unicode`.
@@ -94,8 +96,6 @@ Or read one of the demo files in this repository:
 `flowchart` / `graph`, `sequenceDiagram`, `stateDiagram` / `stateDiagram-v2`,
 `classDiagram`, `erDiagram`. Other types (`pie`, `gantt`, `mindmap`, ...)
 show a short notice and their source.
-
-Card labels are in Portuguese today (`Fluxograma`, `Sequência`, ...).
 
 ## How it works
 
