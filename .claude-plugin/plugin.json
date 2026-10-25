@@ -21,6 +21,16 @@
     "markdown"
   ],
   "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Language of the card titles, tool row counts and notices.",
+      "default": "en",
+      "options": [
+        "en",
+        "pt-BR"
+      ]
+    },
     "terminalRender": {
       "type": "string",
       "title": "Terminal render",

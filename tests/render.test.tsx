@@ -1,10 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
 import { diagramsInFile, diagramsTouched, splitMermaid } from '../hooks/fences'
+import { messagesFor } from '../hooks/messages'
 
 const FLOW = ['flowchart LR', '  A[Pedido] --> B{Pago?}', '  B -->|sim| C[Enviar]', '  B -->|não| D[Cancelar]'].join('\n')
 const REPLY = `Aqui está o fluxo:\n\n\`\`\`mermaid\n${FLOW}\n\`\`\`\n\nDepois disso o pedido fecha.`
 const VIEWPORT = { columns: 120, rows: 40 }
+const PT = { options: { language: 'pt-BR' } }
 
 test('splits prose from closed mermaid fences only', () => {
   expect(splitMermaid(REPLY).map(segment => segment.kind)).toEqual(['markdown', 'mermaid', 'markdown'])
@@ -12,7 +14,7 @@ test('splits prose from closed mermaid fences only', () => {
   expect(splitMermaid('````markdown\n```mermaid\ngraph TD\n```\n````').map(segment => segment.kind)).toEqual(['markdown'])
 })
 
-test('a reply with a diagram draws prose and a titled card on the terminal', async $ => {
+test('a reply with a diagram draws prose and a titled card on the terminal', PT, async $ => {
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
     surface: 'terminal',
@@ -28,7 +30,7 @@ test('a reply with a diagram draws prose and a titled card on the terminal', asy
   expect(await ui.find({ type: 'Text', text: /Cancelar/ })).toBeDefined()
 })
 
-test('a horizontal flowchart too wide for the terminal is laid out vertically', async $ => {
+test('a horizontal flowchart too wide for the terminal is laid out vertically', PT, async $ => {
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
     surface: 'terminal',
@@ -40,7 +42,7 @@ test('a horizontal flowchart too wide for the terminal is laid out vertically', 
   expect(await ui.find({ type: 'Text', text: /disposto na vertical/ })).toBeDefined()
 })
 
-test('a diagram that does not parse shows the reason and its source', async $ => {
+test('a diagram that does not parse shows the reason and its source', PT, async $ => {
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
     surface: 'terminal',
@@ -69,7 +71,7 @@ test('a reply without a closed mermaid fence is left to the engine', async ($, o
   expect(await ui.find({ text: 'engine' })).toBeDefined()
 })
 
-test('a Read of a .mmd file draws its diagram under the tool row', async $ => {
+test('a Read of a .mmd file draws its diagram under the tool row', PT, async $ => {
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
     surface: 'terminal',
@@ -154,7 +156,7 @@ test('C1 a markdown file in CRLF yields its diagrams', () => {
   expect(diagramsInFile('/repo/README.md', 'x\r\n```mermaid\r\ngraph TD\r\n  A-->B\r\n```\r\n')).toEqual(['graph TD\n  A-->B'])
 })
 
-test('C2 a tilde fence in a reply draws a card', async $ => {
+test('C2 a tilde fence in a reply draws a card', PT, async $ => {
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
     surface: 'terminal',
@@ -180,7 +182,7 @@ test('C2 two fences in a reply draw two cards with prose between', async $ => {
   expect(await ui.find({ type: 'Markdown', text: /entre os dois/ })).toBeDefined()
 })
 
-test('C2 a finished Write of a markdown file draws its one card', async $ => {
+test('C2 a finished Write of a markdown file draws its one card', PT, async $ => {
   const content = `# Doc\n\n${fence(FLOW)}\n`
   const ui = await $.ui.mount({
     plugin: 'mermaid-render',
@@ -662,3 +664,191 @@ test('BE8 in a CRLF file whose closer is the last line without a trailing newlin
 
   expect(touchedBy(text, text.length - 1, text.length)).toEqual([F1])
 })
+
+const svgOf = (width: number, height: number) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}"/></svg>`
+
+function answerSvg(on: On, svg: string) {
+  on('env.get', () => ({ value: '/var/tmp-test/' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('process.run', (_, { argv }) => ran(0, argv[1] === 'node' ? svg : ''))
+}
+
+async function imageBox($: Mount, on: On, svg: string, source: string, viewport: { columns: number; rows: number }) {
+  answerSvg(on, svg)
+  const ui = await $.ui.mount({
+    plugin: 'mermaid-render',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: fence(source), isFirstOfReply: true },
+    viewport: viewport as typeof VIEWPORT,
+  })
+  const image = await ui.find({ type: 'Image' })
+
+  return { columns: image?.props.columns, rows: image?.props.rows }
+}
+
+const IMAGE = { options: { terminalRender: 'image' } }
+
+test('image mode fills the card width of a wide picture that fits the terminal height', IMAGE, async ($, on) => {
+  expect(await imageBox($, on, svgOf(300, 120), 'graph TD\n  W1-->W2', { columns: 120, rows: 40 })).toEqual({ columns: 114, rows: 23 })
+})
+
+test('image mode keeps the picture whose rows equal the terminal height cap', IMAGE, async ($, on) => {
+  expect(await imageBox($, on, svgOf(300, 120), 'graph TD\n  W3-->W4', { columns: 120, rows: 31 })).toEqual({ columns: 114, rows: 23 })
+})
+
+test('image mode shrinks the picture one row over the terminal height cap', IMAGE, async ($, on) => {
+  expect(await imageBox($, on, svgOf(300, 120), 'graph TD\n  W5-->W6', { columns: 120, rows: 30 })).toEqual({ columns: 110, rows: 22 })
+})
+
+test('image mode bounds a tall picture by the terminal height', IMAGE, async ($, on) => {
+  expect(await imageBox($, on, svgOf(100, 400), 'graph TD\n  W7-->W8', { columns: 120, rows: 40 })).toEqual({ columns: 16, rows: 32 })
+})
+
+test('image mode never exceeds 255 columns', IMAGE, async ($, on) => {
+  expect(await imageBox($, on, svgOf(300, 120), 'graph TD\n  W9-->W10', { columns: 300, rows: 200 })).toEqual({ columns: 255, rows: 51 })
+})
+
+test('image mode falls back to a 40-row terminal height when the surface gives no viewport', IMAGE, async ($, on) => {
+  answerSvg(on, svgOf(100, 400))
+  const ui = await $.ui.mount({
+    plugin: 'mermaid-render',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: fence('graph TD\n  W11-->W12'), isFirstOfReply: true },
+  })
+  const image = await ui.find({ type: 'Image' })
+
+  expect({ columns: image?.props.columns, rows: image?.props.rows }).toEqual({ columns: 16, rows: 32 })
+})
+
+test('image mode sizes the picture under a tool row by the same fit', IMAGE, async ($, on) => {
+  answerSvg(on, svgOf(300, 120))
+  const path = '/repo/docs/tamanho.mmd'
+  const ui = await $.ui.mount({
+    plugin: 'mermaid-render',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: toolProps('Read', { file_path: path }, { type: 'text', file: { filePath: path, content: 'graph TD\n  W13-->W14', numLines: 2, startLine: 1, totalLines: 2 } }),
+    viewport: VIEWPORT,
+  })
+  const image = await ui.find({ type: 'Image' })
+
+  expect({ columns: image?.props.columns, rows: image?.props.rows }).toEqual({ columns: 109, rows: 22 })
+})
+
+const PT_IMAGE = { options: { terminalRender: 'image', language: 'pt-BR' } }
+const FR_IMAGE = { options: { terminalRender: 'image', language: 'fr' } }
+const WRONG_CASE = { options: { language: 'pt-br' } }
+
+const mountText = ($: Mount, text: string, columns = 120) =>
+  $.ui.mount({ plugin: 'mermaid-render', surface: 'terminal', component: 'AssistantMessage', props: { text, isFirstOfReply: true }, viewport: { columns, rows: 40 } })
+
+const mountRead = ($: Mount, path: string, content: string) =>
+  $.ui.mount({
+    plugin: 'mermaid-render',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: toolProps('Read', { file_path: path }, { type: 'text', file: { filePath: path, content, numLines: 2, startLine: 1, totalLines: 2 } }),
+    viewport: VIEWPORT,
+  })
+
+test('without a language option a flowchart card is titled in English', async $ => {
+  const ui = await mountText($, REPLY)
+
+  expect(await ui.find({ type: 'Text', text: 'Flowchart' })).toBeDefined()
+  expect(await ui.findAll({ type: 'Text', text: 'Fluxograma' })).toHaveLength(0)
+})
+
+test('without a language option a Read of a sequence file shows the English title and count line', async $ => {
+  const content = 'sequenceDiagram\n  A->>B: oi\n  B->>A: olá'
+  const ui = await mountRead($, '/repo/docs/seq.mmd', content)
+
+  expect(await ui.find({ type: 'Text', text: 'Sequence' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '  ⎿  3 lines · 1 Mermaid diagram' })).toBeDefined()
+})
+
+test('without a language option a diagram that does not parse says it could not be drawn', async $ => {
+  const ui = await mountText($, '```mermaid\npie\n  "a": 1\n```')
+
+  expect(await ui.find({ type: 'Text', text: /Could not draw:/ })).toBeDefined()
+  expect(await ui.find({ type: 'Code', text: /pie/ })).toBeDefined()
+})
+
+test('without a language option a flowchart too wide for the terminal says it was laid out vertically', async $ => {
+  const ui = await mountText($, REPLY, 40)
+
+  expect(await ui.find({ type: 'Text', text: /laid out vertically/ })).toBeDefined()
+})
+
+test('without a language option the image alt is English', { options: { terminalRender: 'image' } }, async ($, on) => {
+  answerSvg(on, svgOf(300, 120))
+  const ui = await mountText($, fence('graph TD\n  L1-->L2'))
+
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('graph diagram')
+})
+
+test('with pt-BR the image alt is Portuguese', PT_IMAGE, async ($, on) => {
+  answerSvg(on, svgOf(300, 120))
+  const ui = await mountText($, fence('graph TD\n  L3-->L4'))
+
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('diagrama graph')
+})
+
+test('an unsupported language value gives English', FR_IMAGE, async ($, on) => {
+  answerSvg(on, svgOf(300, 120))
+  const ui = await mountText($, fence('graph TD\n  L5-->L6'))
+
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('graph diagram')
+})
+
+test('a pt-BR value in the wrong case gives English', WRONG_CASE, async $ => {
+  const ui = await mountText($, REPLY)
+
+  expect(await ui.find({ type: 'Text', text: 'Flowchart' })).toBeDefined()
+})
+
+test('a one-line file with one diagram uses the singular count line in English', async $ => {
+  const ui = await mountRead($, '/repo/docs/one.mmd', 'graph TD')
+
+  expect(await ui.find({ type: 'Text', text: '  ⎿  1 line · 1 Mermaid diagram' })).toBeDefined()
+})
+
+test('a one-line file with one diagram uses the singular count line in Portuguese', PT, async $ => {
+  const ui = await mountRead($, '/repo/docs/one.mmd', 'graph TD')
+
+  expect(await ui.find({ type: 'Text', text: '  ⎿  1 linha · 1 diagrama Mermaid' })).toBeDefined()
+})
+
+test('a markdown file with two fences uses the plural count line in English', async $ => {
+  const ui = await mountRead($, '/repo/doc.md', TWO_FENCES)
+
+  expect(await ui.find({ type: 'Text', text: /· 2 Mermaid diagrams$/ })).toBeDefined()
+})
+
+test('a markdown file with two fences uses the plural count line in Portuguese', PT, async $ => {
+  const ui = await mountRead($, '/repo/doc.md', TWO_FENCES)
+
+  expect(await ui.find({ type: 'Text', text: /· 2 diagramas Mermaid$/ })).toBeDefined()
+})
+
+test('messagesFor selects Portuguese for exactly pt-BR', () => {
+  expect(messagesFor('pt-BR').kinds.flowchart).toBe('Fluxograma')
+})
+
+const NOT_PORTUGUESE: [string, unknown][] = [
+  ['en', 'en'],
+  ['undefined', undefined],
+  ['an empty string', ''],
+  ['fr', 'fr'],
+  ['lowercase pt-br', 'pt-br'],
+  ['uppercase PT-BR', 'PT-BR'],
+  ['a non-string', 1],
+]
+
+for (const [name, language] of NOT_PORTUGUESE) {
+  test(`messagesFor gives English for ${name}`, () => {
+    expect(messagesFor(language).kinds.flowchart).toBe('Flowchart')
+  })
+}

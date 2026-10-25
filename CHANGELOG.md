@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Image mode draws the picture at the card's full width, shrunk only when it would be taller than the terminal allows.
+- Add the `language` option: card titles, tool row counts and notices are English by default and Brazilian Portuguese with `pt-BR`.
+
 ## 0.2.0
 
 - Render diagrams from `Bash` output (mermaid fences, or a printed `.mmd` / `.mermaid` file) as cards under the command's own row.
