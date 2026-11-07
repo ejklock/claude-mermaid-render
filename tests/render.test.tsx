@@ -274,7 +274,7 @@ function answerRuns(on: Parameters<Parameters<typeof test>[1]>[1], rsvgExit: num
   })
   on('process.run', (_, { argv }) => {
     runs.push([...argv])
-    if (argv[1] === 'node') return ran(0, SVG)
+    if (argv[0] === 'node') return ran(0, SVG)
 
     return ran(argv[1] === 'rsvg-convert' ? rsvgExit : 0)
   })
@@ -902,7 +902,7 @@ function answerSvg(on: On, svg: string) {
   on('env.get', () => ({ value: '/var/tmp-test/' }))
   on('fs.write', () => ({ value: undefined }))
   on('fs.read', () => ({ value: { base64: PNG_BASE64 } }))
-  on('process.run', (_, { argv }) => ran(0, argv[1] === 'node' ? svg : ''))
+  on('process.run', (_, { argv }) => ran(0, argv[0] === 'node' ? svg : ''))
 }
 
 async function imageBox($: Mount, on: On, svg: string, source: string, viewport: { columns: number; rows: number }) {

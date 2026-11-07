@@ -86,7 +86,7 @@ export const register: Register = (on, options) => {
       if (svg === undefined) {
         // SVG layout needs ELK, too large to import: renderer/svg.mjs runs it under node.
         try {
-          const ran = await $.process.run(['/usr/bin/env', 'node', `${$.plugin.root}/renderer/svg.mjs`], {
+          const ran = await $.process.run(['node', `${$.plugin.root}/renderer/svg.mjs`], {
             stdin: JSON.stringify({ source, theme }),
             timeoutMs: 15000,
           })
